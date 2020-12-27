@@ -1,27 +1,119 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
-import * as vscode from 'vscode';
+import fetch from "node-fetch";
+import * as vscode from "vscode";
 
-// this method is called when your extension is activated
-// your extension is activated the very first time the command is executed
+const displayNearestAdhan = (timings: Object) => {
+  const today = new Date();
+
+  let times = Object.values(timings);
+  let timesToPray: { hours: number; minutes?: string }[] = [];
+
+  const hour = today.getHours();
+  const minutes = today.getMinutes();
+
+  console.log("hour : " + hour);
+  console.log("minutes : " + minutes);
+
+  times.forEach((time: string) => {
+    let aux = time.replace(" (CET)", "").split(":");
+
+    console.log(aux[0] + " : " + aux[1]);
+
+    if (
+      (Number.parseInt(aux[0]) == hour && Number.parseInt(aux[1]) > minutes) ||
+      (Number.parseInt(aux[0]) == hour + 1 &&
+        Number.parseInt(aux[1]) <= minutes)
+    ) {
+      timesToPray.push({
+        hours: 0,
+        minutes: aux[1],
+      });
+    } else if (Number.parseInt(aux[0]) > hour) {
+      timesToPray.push({
+        hours: Number.parseInt(aux[0]),
+      });
+    }
+  });
+
+  if (timesToPray.length === 0) {
+    vscode.window.showErrorMessage("No prayers left for today !");
+  } else {
+    if (timesToPray.findIndex((time) => time.minutes != undefined) != -1) {
+      vscode.window.showInformationMessage("Next Prayer in less than an hour");
+    } else {
+      const nearestHour =
+        timesToPray.reduce((a, b) => {
+          return Math.abs(b.hours - hour) < Math.abs(a.hours - hour) ? b : a;
+        }).hours - hour;
+
+      vscode.window.showInformationMessage(
+        `Next Prayer in ${nearestHour} hour${nearestHour == 1 ? "" : "s"}`
+      );
+    }
+  }
+};
+
+const prayerTimes = async (city: string, country: string) => {
+  try {
+    let today = new Date();
+
+    let resp = await fetch(
+      `http://api.aladhan.com/v1/calendarByCity?city=${city}&country=${country}&month=${
+        today.getMonth() + 1
+      }&year=${today.getFullYear()}`
+    );
+    let { data, code } = await resp.json();
+
+    if (code != 200) {
+      console.log(data);
+      throw data;
+    }
+    let prayerTimes = data[today.getDate() - 1].timings;
+    delete prayerTimes.Sunrise;
+    delete prayerTimes.Sunset;
+    delete prayerTimes.Imsak;
+    delete prayerTimes.Midnight;
+
+    displayNearestAdhan(prayerTimes);
+  } catch (error) {
+    vscode.window.showErrorMessage(error.toString());
+  }
+};
+
 export function activate(context: vscode.ExtensionContext) {
+  console.log(
+    'Congratulations, your extension "prayers-reminder" is now active!'
+  );
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "prayers-reminder" is now active!');
+  // let disposable = vscode.commands.registerCommand(
+  //   "prayers-reminder.adhan",
+  //   () => {
+  vscode.window.showInformationMessage("Welcome brother/sister");
 
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	let disposable = vscode.commands.registerCommand('prayers-reminder.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
+  let cityInbox = vscode.window.createInputBox();
+  let countryInbox = vscode.window.createInputBox();
 
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from Prayers reminder!');
-	});
+  cityInbox.title = "Adhan : Insert city";
+  countryInbox.title = "Adhan : Insert country";
 
-	context.subscriptions.push(disposable);
+  cityInbox.show();
+
+  cityInbox.onDidAccept((_) => {
+    let city = cityInbox.value;
+    cityInbox.dispose();
+
+    countryInbox.show();
+
+    countryInbox.onDidAccept((_) => {
+      let country = countryInbox.value;
+
+      countryInbox.dispose();
+      prayerTimes(city, country);
+    });
+  });
+  // }
+  // );
+
+  // context.subscriptions.push(disposable);
 }
 
-// this method is called when your extension is deactivated
 export function deactivate() {}
