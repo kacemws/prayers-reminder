@@ -5,7 +5,11 @@ const displayNearestAdhan = (timings: Object) => {
   const today = new Date();
 
   let times = Object.values(timings);
-  let timesToPray: { hours: number; minutes?: string }[] = [];
+  let timesToPray: {
+    hours: number;
+    minutesLeft: number;
+    minutes?: string;
+  }[] = [];
 
   const hour = today.getHours();
   const minutes = today.getMinutes();
@@ -26,10 +30,12 @@ const displayNearestAdhan = (timings: Object) => {
       timesToPray.push({
         hours: 0,
         minutes: aux[1],
+        minutesLeft: Number.parseInt(aux[1]),
       });
     } else if (Number.parseInt(aux[0]) > hour) {
       timesToPray.push({
         hours: Number.parseInt(aux[0]),
+        minutesLeft: Number.parseInt(aux[1]),
       });
     }
   });
@@ -49,6 +55,17 @@ const displayNearestAdhan = (timings: Object) => {
         `Next Prayer in ${nearestHour} hour${nearestHour == 1 ? "" : "s"}`
       );
     }
+    timesToPray.forEach((time) => {
+      let auxMinutes =
+        60 - minutes + time.minutesLeft + (time.hours - (hour + 1)) * 60 - 5;
+      console.log(time);
+      console.log(auxMinutes);
+      if (auxMinutes > 0) {
+        setTimeout(() => {
+          vscode.window.showInformationMessage("Next Prayer in 5 minutes");
+        }, auxMinutes * 60000);
+      }
+    });
   }
 };
 
