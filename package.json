@@ -2,7 +2,9 @@
   "name": "prayers-reminder",
   "displayName": "Prayers reminder",
   "description": "An extension that reminds you the time of prayers",
-  "version": "0.0.1",
+  "version": "1.0.0",
+  "icon": "assets/prayer_icon.png",
+  "publisher": "BelkacemBerras",
   "engines": {
     "vscode": "^1.52.0"
   },
